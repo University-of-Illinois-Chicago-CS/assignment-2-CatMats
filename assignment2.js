@@ -9,6 +9,8 @@ var uniformModelViewLoc = null;
 var uniformProjectionLoc = null;
 var heightmapData = null;
 
+//var zoomVal = 90;
+
 function processImage(img)
 {
 	// draw the image into an off-screen canvas
@@ -49,7 +51,7 @@ function processImage(img)
 	return {
 		data: heightArray,
 		width: sw,
-		height: sw
+		height: sh
 	};
 }
 
@@ -79,7 +81,55 @@ window.loadImageFile = function(event)
 					heightmapData.width: width of map (number of columns)
 					heightmapData.height: height of the map (number of rows)
 			*/
+
+			//positions to hold all potential vertices
+			const positions = [];
+
+			//obtain width and height from the mapdata
+    		const w = heightmapData.width;
+    		const h = heightmapData.height;
+
+			//scale to play with depth of height
+			const heightScale = 0.5;
+
+			
+			for (let z = 0; z < h - 1; z++) {
+				for (let x = 0; x < w - 1; x++) {
+					//get height values for the four corners of a quad
+					const y_tl = heightmapData.data[z * w + x] * heightScale;
+					const y_tr = heightmapData.data[z * w + (x + 1)] * heightScale;
+					const y_bl = heightmapData.data[(z + 1) * w + x] * heightScale;
+					const y_br = heightmapData.data[(z + 1) * w + (x + 1)] * heightScale;
+
+					//normalize x and z coordinates to the [-1, 1] range
+					const x1 = -1.0 + (x / (w - 1)) * 2.0;
+					const z1 = -1.0 + (z / (h - 1)) * 2.0;
+					const x2 = -1.0 + ((x + 1) / (w - 1)) * 2.0;
+					const z2 = -1.0 + ((z + 1) / (h - 1)) * 2.0;
+
+					//make two triangles for the quad
+					
+					//triangle 1: Top-left, Bottom-left, Top-right
+					positions.push(x1, y_tl, z1);
+					positions.push(x1, y_bl, z2);
+					positions.push(x2, y_tr, z1);
+					
+					//triangle 2: Top-right, Bottom-left, Bottom-right
+					positions.push(x2, y_tr, z1);
+					positions.push(x1, y_bl, z2);
+					positions.push(x2, y_br, z2);
+				}
+			}
+			
+			//update vertexCount with total number of positions
+			vertexCount = positions.length / 3;
+
+			var posAttribLoc = gl.getAttribLocation(program, "position");
+			var posBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(positions));
+			vao = createVAO(gl, posAttribLoc, posBuffer, null, null, null, null);
+
 			console.log('loaded image: ' + heightmapData.width + ' x ' + heightmapData.height);
+    		console.log("Total vertices generated:" + vertexCount);
 
 		};
 		img.onerror = function() 
@@ -110,7 +160,7 @@ function setupViewMatrix(eye, target)
 function draw()
 {
 
-	var fovRadians = 70 * Math.PI / 180;
+	var fovRadians = zoomVal * Math.PI / 180;
 	var aspectRatio = +gl.canvas.width / +gl.canvas.height;
 	var nearClip = 0.001;
 	var farClip = 20.0;
@@ -201,7 +251,7 @@ function createBox()
 	// 3 rotations of the above face
 	for (var i=1; i<=3; i++) 
 	{
-		var yAngle = i* (90 * Math.PI / 180);
+		var yAngle = i* (90* Math.PI / 180);
 		var yRotMat = rotateYMatrix(yAngle);
 
 		var newT1 = transformTriangle(triangle1, yRotMat);
@@ -226,6 +276,7 @@ function createBox()
 var isDragging = false;
 var startX, startY;
 var leftMouse = false;
+var zoomVal = 90;
 
 function addMouseCallback(canvas)
 {
@@ -257,10 +308,12 @@ function addMouseCallback(canvas)
 		if (e.deltaY < 0) 
 		{
 			console.log("Scrolled up");
+			zoomVal -= 1
 			// e.g., zoom in
 		} else {
 			console.log("Scrolled down");
 			// e.g., zoom out
+			zoomVal += 1
 		}
 	});
 
