@@ -9,7 +9,37 @@ var uniformModelViewLoc = null;
 var uniformProjectionLoc = null;
 var heightmapData = null;
 
-//var zoomVal = 90;
+var meshHeight = 1;
+window.updateHeight = function() {
+    meshHeight = parseInt(document.querySelector("#height").value) / 50;
+    console.log("current model scale: " + meshHeight);
+}
+
+var zoomVal = 0;
+window.updateZoom = function(){
+	zoomVal = parseInt(document.querySelector("#scale").value) / 50;
+	console.log("current zoom value: " + zoomVal);
+}
+
+var panXVal = 0;
+window.updatePanX = function(){
+	panXVal = parseInt(document.querySelector("#panX").value) * (Math.PI / 180);
+}
+
+var panZVal = 0;
+window.updatePanZ = function(){
+	panZVal = parseInt(document.querySelector("#panZ").value) * (Math.PI / 180);
+}
+
+var rotYVal = 0;
+window.updateRotY = function(){
+	rotYVal = parseInt(document.querySelector("#rotationY").value) * (Math.PI / 180);
+}
+
+var rotZVal = 0;
+window.updateRotZ = function(){
+	rotZVal = parseInt(document.querySelector("#rotationZ").value) * (Math.PI / 180);
+}
 
 function processImage(img)
 {
@@ -89,17 +119,14 @@ window.loadImageFile = function(event)
     		const w = heightmapData.width;
     		const h = heightmapData.height;
 
-			//scale to play with depth of height
-			const heightScale = 0.5;
-
 			
 			for (let z = 0; z < h - 1; z++) {
 				for (let x = 0; x < w - 1; x++) {
 					//get height values for the four corners of a quad
-					const y_tl = heightmapData.data[z * w + x] * heightScale;
-					const y_tr = heightmapData.data[z * w + (x + 1)] * heightScale;
-					const y_bl = heightmapData.data[(z + 1) * w + x] * heightScale;
-					const y_br = heightmapData.data[(z + 1) * w + (x + 1)] * heightScale;
+					const y_tl = heightmapData.data[z * w + x];
+					const y_tr = heightmapData.data[z * w + (x + 1)];
+					const y_bl = heightmapData.data[(z + 1) * w + x];
+					const y_br = heightmapData.data[(z + 1) * w + (x + 1)];
 
 					//normalize x and z coordinates to the [-1, 1] range
 					const x1 = -1.0 + (x / (w - 1)) * 2.0;
@@ -160,33 +187,82 @@ function setupViewMatrix(eye, target)
 function draw()
 {
 
-	var fovRadians = zoomVal * Math.PI / 180;
+	var fovRadians = 70 * Math.PI / 180;
 	var aspectRatio = +gl.canvas.width / +gl.canvas.height;
 	var nearClip = 0.001;
 	var farClip = 20.0;
 
 	// perspective projection
-	var projectionMatrix = perspectiveMatrix(
-		fovRadians,
-		aspectRatio,
-		nearClip,
-		farClip,
-	);
+	var projectionMatrix;
+	if (document.querySelector("#projection").value == 'perspective')
+	{
+		projectionMatrix= perspectiveMatrix(
+			fovRadians,
+			aspectRatio,
+			nearClip,
+			farClip,
+		);
+	}
+	else {
+		var unitClose = 10;
+		projectionMatrix = orthographicMatrix(
+			-unitClose / zoomVal,
+			unitClose / zoomVal ,
+			-(unitClose / aspectRatio) / zoomVal,
+			(unitClose / aspectRatio) / zoomVal,
+			nearClip,
+			farClip,
+		 );
+	}
 
 	// eye and target
 	var eye = [0, 5, 5];
+
+	eye = add(eye, [panXVal / 2, 0, 0]);
+	eye = add(eye, [0, 0, -(panZVal / 2)]);
+
 	var target = [0, 0, 0];
+
+
 
 	var modelMatrix = identityMatrix();
 
 	// TODO: set up transformations to the model
 
+	var scaleMat = scaleMatrix(1.0, meshHeight, 1.0);
+	modelMatrix = multiplyMatrices(modelMatrix, scaleMat);
+
+	var rotZMat = rotateZMatrix(rotZVal);
+	//modelMatrix = multiplyMatrices(modelMatrix, rotZMat);
+	var rotYMat = rotateYMatrix(rotYVal);
+	//modelMatrix = multiplyMatrices(modelMatrix, rotYMat);
+	// var rotZMat = rotateZMatrix(rotZVal);
+	// modelMatrix = multiplyMatrices(modelMatrix, rotZMat);
 	// setup viewing matrix
 	var eyeToTarget = subtract(target, eye);
 	var viewMatrix = setupViewMatrix(eye, target);
 
+
+	var zoomMatrix = translateMatrix(0, zoomVal, zoomVal);
+	viewMatrix = multiplyMatrices(viewMatrix, zoomMatrix);
+	//var panXMatrix = translateMatrix(panXVal, 0, 0);
+	//viewMatrix = multiplyMatrices(viewMatrix, panXMatrix);
+	viewMatrix = multiplyMatrices(viewMatrix, rotYMat);
+	viewMatrix = multiplyMatrices(viewMatrix, rotZMat);
+
+	//viewMatrix = multiplyMatrices(viewMatrix, rotYMat)
+	//viewMatrix = multiplyMatrices(viewMatrix, rotZMat)
+
+	// var zoomMatrix = translateMatrix(0, zoomVal, zoomVal);
+	// viewMatrix = multiplyMatrices(viewMatrix, zoomMatrix);
+
+
+
+
 	// model-view Matrix = view * model
 	var modelviewMatrix = multiplyMatrices(viewMatrix, modelMatrix);
+
+	//modelviewMatrix = multiplyMatrices(modelviewMatrix, rotateXMatrix(panXVal));
 
 
 	// enable depth testing
@@ -276,7 +352,9 @@ function createBox()
 var isDragging = false;
 var startX, startY;
 var leftMouse = false;
-var zoomVal = 90;
+var zoomVal = 1;
+var yRotation = 0.0;
+var zRotation = 0.0;
 
 function addMouseCallback(canvas)
 {
@@ -305,16 +383,8 @@ function addMouseCallback(canvas)
 	canvas.addEventListener("wheel", function(e)  {
 		e.preventDefault(); // prevents page scroll
 
-		if (e.deltaY < 0) 
-		{
-			console.log("Scrolled up");
-			zoomVal -= 1
-			// e.g., zoom in
-		} else {
-			console.log("Scrolled down");
-			// e.g., zoom out
-			zoomVal += 1
-		}
+		zoomVal += e.deltaY * 0.001;
+
 	});
 
 	document.addEventListener("mousemove", function (e) {
@@ -325,8 +395,11 @@ function addMouseCallback(canvas)
 		var deltaX = currentX - startX;
 		var deltaY = currentY - startY;
 		console.log('mouse drag by: ' + deltaX + ', ' + deltaY);
+		const sensitivity = 0.01;
 
 		// implement dragging logic
+		yRotation += deltaX * sensitivity;
+        zRotation += deltaY * sensitivity;
 	});
 
 	document.addEventListener("mouseup", function () {
