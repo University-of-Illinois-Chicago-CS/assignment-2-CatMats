@@ -15,36 +15,36 @@ window.updateHeight = function() {
     console.log("current model scale: " + meshHeight);
 }
 
-var zoomVal = 0;
-window.updateZoom = function(){
-	zoomVal = parseInt(document.querySelector("#scale").value) / 50;
-	console.log("current zoom value: " + zoomVal);
-}
-
-var panXVal = 0;
-window.updatePanX = function(){
-	panXVal = parseInt(document.querySelector("#panX").value) * (Math.PI / 180);
-}
-
-var panZVal = 0;
-window.updatePanZ = function(){
-	panZVal = parseInt(document.querySelector("#panZ").value) * (Math.PI / 180);
-}
-
-var rotYVal = 0;
-window.updateRotY = function(){
-	rotYVal = parseInt(document.querySelector("#rotationY").value) * (Math.PI / 180);
-}
-
-var rotXVal = 0;
-window.updateRotX = function(){
-	rotXVal = parseInt(document.querySelector("#rotationX").value) * (Math.PI / 180);
-}
-
 var useWire = false;
 window.checkBox = function() {
     useWire = document.querySelector("#checkbox").checked;
 }
+
+var zoomVal = 0;
+// window.updateZoom = function(){
+// 	zoomVal = parseInt(document.querySelector("#scale").value) / 50;
+// 	console.log("current zoom value: " + zoomVal);
+// }
+
+var panXVal = 0;
+// window.updatePanX = function(){
+// 	panXVal = parseInt(document.querySelector("#panX").value) * (Math.PI / 180);
+// }
+
+var panZVal = 0;
+// window.updatePanZ = function(){
+// 	panZVal = parseInt(document.querySelector("#panZ").value) * (Math.PI / 180);
+// }
+
+var rotYVal = 0;
+// window.updateRotY = function(){
+// 	rotYVal = parseInt(document.querySelector("#rotationY").value) * (Math.PI / 180);
+// }
+
+var rotXVal = 0;
+// window.updateRotX = function(){
+// 	rotXVal = parseInt(document.querySelector("#rotationX").value) * (Math.PI / 180);
+// }
 
 function processImage(img)
 {
